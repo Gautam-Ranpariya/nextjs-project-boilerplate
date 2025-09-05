@@ -1,0 +1,47 @@
+{
+  "name": "nextjs-ts-jest-starter",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "yarn format && yarn lint && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "format:ci": "prettier --check .",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --runInBand"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
+    "i18next": "^25.3.6",
+    "next": "15.4.6",
+    "next-i18n-router": "^5.5.3",
+    "next-intl": "^4.3.4",
+    "prettier": "3.5.3",
+    "prettier-plugin-tailwindcss": "^0.6.14",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-jest": "^30.1.1",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.6",
+    "jest": "^30.1.1",
+    "jest-environment-jsdom": "^30.1.1",
+    "tailwindcss": "^4",
+    "ts-jest": "^29.4.1",
+    "ts-node": "10.9.2",
+    "typescript": "^5"
+  }
+}
