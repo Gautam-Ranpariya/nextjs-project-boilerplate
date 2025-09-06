@@ -117,7 +117,21 @@ jobs:
           key: ${{ runner.os }}-build-${{ github.sha }}
 
       - name: Install dependencies (if cache miss)
-        run: npm ci --prefer-offline
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "Using pnpm"
+            npm install -g pnpm
+            pnpm install --frozen-lockfile
+          elif [ -f "yarn.lock" ]; then
+            echo "Using yarn"
+            yarn install --frozen-lockfile
+          elif [ -f "package-lock.json" ]; then
+            echo "Using npm"
+            npm ci
+          else
+            echo "No lock file found, using npm install"
+            yarn install
+          fi
 
       # Example deployment steps - adjust based on your deployment target
       - name: Deploy to staging/production
