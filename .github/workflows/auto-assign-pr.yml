@@ -21,44 +21,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get PR details
-        id: pr-details
+      - name: Get PR details and assign reviewer
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const prNumber = parseInt('${{ github.event.inputs.pr_number }}');
+            const prAuthor = '${{ github.event.inputs.pr_author }}';
+            
+            // Get PR details
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: parseInt('${{ github.event.inputs.pr_number }}')
+              pull_number: prNumber
             });
 
-            core.setOutput('pr_state', pr.data.state);
-            core.setOutput('pr_draft', pr.data.draft);
-            core.setOutput('pr_author', pr.data.user.login);
+            // Only proceed if PR is open and not draft
+            if (pr.data.state === 'open' && !pr.data.draft) {
+              // Assign reviewer and assignee
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                reviewers: ['Gautam-Ranpariya']
+              });
 
-      - name: Assign reviewer (you)
-        if: steps.pr-details.outputs.pr_state == 'open' && steps.pr-details.outputs.pr_draft == 'false'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.pulls.requestReviewers({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: parseInt('${{ github.event.inputs.pr_number }}'),
-              reviewers: ['Gautam-Ranpariya']
-            });
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                assignees: ['Gautam-Ranpariya']
+              });
 
-            await github.rest.issues.addAssignees({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: parseInt('${{ github.event.inputs.pr_number }}'),
-              assignees: ['Gautam-Ranpariya']
-            });
+              console.log('✅ Successfully assigned reviewer and assignee');
+            }
 
       - name: Auto-approve if PR author is repo owner
         if: github.event.inputs.pr_author == 'Gautam-Ranpariya'
@@ -66,13 +62,17 @@ jobs:
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
+            const prNumber = parseInt('${{ github.event.inputs.pr_number }}');
+            
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: parseInt('${{ github.event.inputs.pr_number }}'),
+              pull_number: prNumber,
               event: 'APPROVE',
               body: '✅ Auto-approved by repo owner'
             });
+
+            console.log('✅ Auto-approved PR');
 
       - name: Comment for admin review if PR author is not owner
         if: github.event.inputs.pr_author != 'Gautam-Ranpariya'
@@ -80,9 +80,13 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const prNumber = parseInt('${{ github.event.inputs.pr_number }}');
+            
             await github.rest.issues.createComment({
-              issue_number: parseInt('${{ github.event.inputs.pr_number }}'),
+              issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: "👋 Auto-assigned and requested review from @Gautam-Ranpariya after successful CI/CD checks"
             });
+
+            console.log('✅ Added comment requesting review');

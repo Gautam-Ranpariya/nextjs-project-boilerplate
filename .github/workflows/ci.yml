@@ -59,6 +59,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    needs: [build] # Ensure this runs after build job
 
     steps:
       - name: Record test start time
