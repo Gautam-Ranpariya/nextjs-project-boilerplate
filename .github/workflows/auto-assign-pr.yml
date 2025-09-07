@@ -1,37 +1,52 @@
 name: Auto Assign Reviewer and Deploy
 
 on:
-  workflow_run:
-    workflows: ['CI/CD'] # Trigger this workflow only when the CI/CD workflow completes
-    types:
-      - completed
+  pull_request:
+    types: [opened, ready_for_review]
+
+permissions:
+  pull-requests: write
+  contents: write
 
 jobs:
   assign-reviewer:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} # Only run if the CI/CD workflow succeeded
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3 # Using the latest stable version
-
-      - name: Assign reviewer (You)
-        uses: kentaro-m/auto-assign-action@v1
+      - name: Assign reviewer (you)
+        uses: kentaro-m/auto-assign-action@v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          assignees: 'Gautam-Ranpariya' # Replace with your GitHub username
+          addAssignees: true
+          addReviewers: true
+          assignees: |
+            Gautam-Ranpariya
+          reviewers: |
+            Gautam-Ranpariya
 
-  # Optional: Trigger the Deploy Workflow after PR is approved
+      - name: Add PR comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "👋 Assigned to @Gautam-Ranpariya for review!"
+            })
+
+  # Optional: Trigger Deploy Workflow after PR is approved
   trigger-deploy:
     runs-on: ubuntu-latest
-    needs: assign-reviewer # Only trigger deploy job after assigning the reviewer
-    if: ${{ github.event.pull_request.reviewers[0]?.status == 'approved' }} # Only run after PR is approved
+    needs: assign-reviewer
+    if: ${{ github.event.review.state == 'approved' }}
 
     steps:
       - name: Trigger Deploy Workflow
         uses: peter-evans/workflow-dispatch@v1
         with:
-          workflow: 'deploy.yml' # Name of the deploy workflow file
-          ref: ${{ github.ref }} # Referring to the current branch
+          workflow: 'deploy.yml'
+          ref: ${{ github.ref }}
           inputs:
-            deploy: true # Example input, adjust as per your deployment needs
+            deploy: true
