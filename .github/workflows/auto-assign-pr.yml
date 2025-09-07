@@ -28,7 +28,7 @@ jobs:
         if: ${{ github.event.pull_request.user.login == 'Gautam-Ranpariya' }}
         uses: hmarr/auto-approve-action@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT_TOKEN }}
 
       - name: Comment for admin review if PR author is not owner
         if: ${{ github.event.pull_request.user.login != 'Gautam-Ranpariya' }}
