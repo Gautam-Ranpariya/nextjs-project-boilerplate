@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main] # Trigger on PRs targeting 'main'
+    branches: [main]
   pull_request:
-    branches: [main] # Trigger on push to 'main' branch
+    branches: [main]
 
 env:
   NODE_VERSION: 20
@@ -45,7 +45,6 @@ jobs:
           echo "Build completed in ${BUILD_DURATION} seconds"
           echo "BUILD_DURATION=${BUILD_DURATION}" >> $GITHUB_ENV
 
-      # Cache build artifacts for deployment
       - name: Cache build artifacts
         uses: actions/cache@v3
         with:
@@ -59,6 +58,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    needs: [build]
 
     steps:
       - name: Record test start time
@@ -89,16 +89,75 @@ jobs:
     outputs:
       test-duration: ${{ env.TEST_DURATION }}
 
-    # Trigger auto-assign and deploy workflow after build and test pass
   trigger-autoassign:
     runs-on: ubuntu-latest
-    needs: [build, test] # Ensure this runs after build and test jobs
+    needs: [build, test]
+    if: github.event_name == 'pull_request'
 
     steps:
-      - name: Trigger review and deploy workflow
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Trigger auto-assign workflow
         run: |
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d '{"ref": "main"}' \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto-assign.yml/dispatches
+            -H "Content-Type: application/json" \
+            -d '{
+              "ref": "main",
+              "inputs": {
+                "pr_number": "${{ github.event.number }}",
+                "pr_author": "${{ github.event.pull_request.user.login }}"
+              }
+            }' \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/auto-assign.yml/dispatches"
+        continue-on-error: true
+
+      - name: Fallback - Direct assignment if dispatch fails
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = ${{ github.event.number }};
+            const prAuthor = '${{ github.event.pull_request.user.login }}';
+
+            // Assign reviewer and assignee directly
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                reviewers: ['Gautam-Ranpariya']
+              });
+
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                assignees: ['Gautam-Ranpariya']
+              });
+
+              // Auto-approve if PR author is repo owner
+              if (prAuthor === 'Gautam-Ranpariya') {
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  event: 'APPROVE',
+                  body: '✅ Auto-approved by repo owner'
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  issue_number: prNumber,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: "👋 Auto-assigned and requested review from @Gautam-Ranpariya after successful CI/CD checks"
+                });
+              }
+
+              console.log('✅ Successfully processed PR assignment');
+            } catch (error) {
+              console.error('Error in fallback assignment:', error);
+            }
