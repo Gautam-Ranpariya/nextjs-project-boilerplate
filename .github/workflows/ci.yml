@@ -90,26 +90,26 @@ jobs:
     outputs:
       test-duration: ${{ env.TEST_DURATION }}
 
-    # Trigger auto-assign workflow after build and test pass (only for PRs)
-    trigger-autoassign:
-      runs-on: ubuntu-latest
-      needs: [build, test] # Ensure this runs after build and test jobs
-      if: github.event_name == 'pull_request' # Only run for pull requests
+  # Trigger auto-assign workflow after build and test pass (only for PRs)
+  trigger-autoassign:
+  runs-on: ubuntu-latest
+  needs: [build, test] # Ensure this runs after build and test jobs
+  if: github.event_name == 'pull_request' # Only run for pull requests
 
-      steps:
-        - name: Trigger auto-assign workflow
-          uses: actions/github-script@v7
-          with:
-            github-token: ${{ secrets.GITHUB_TOKEN }}
-            script: |
-              await github.rest.actions.createWorkflowDispatch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'auto-assign.yml',
-                ref: 'main',
-                inputs: {
-                  pr_number: '${{ github.event.number }}',
-                  pr_author: '${{ github.event.pull_request.user.login }}'
-                }
-              });
-              console.log('Auto-assign workflow triggered successfully');
+  steps:
+    - name: Trigger auto-assign workflow
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'auto-assign.yml',
+            ref: 'main',
+            inputs: {
+              pr_number: '${{ github.event.number }}',
+              pr_author: '${{ github.event.pull_request.user.login }}'
+            }
+          });
+          console.log('Auto-assign workflow triggered successfully');
