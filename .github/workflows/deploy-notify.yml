@@ -1,22 +1,25 @@
-name: Deploy Workflow
+name: Deploy
 
 on:
-  workflow_run:
-    workflows: ['CI Workflow', 'Auto Assign Reviewer'] # Trigger after CI and Auto-Assign complete
-    types:
-      - completed
+  pull_request_review:
+    types: [submitted]
+
+env:
+  NODE_VERSION: 20
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} # Only deploy if CI/CD workflow succeeded
+    if: github.event.review.state == 'approved' # Only deploy when PR is approved
 
     steps:
       - name: Record deployment start time
         run: echo "DEPLOY_START_TIME=$(date +%s)" >> $GITHUB_ENV
 
-      - name: Checkout repository
+      - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -24,16 +27,18 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
 
-      # Restore cached build artifacts
+      # Try to restore cached build artifacts from CI
       - name: Restore build artifacts
+        id: cache-restore
         uses: actions/cache@v3
         with:
           path: |
             .next
             node_modules
-          key: ${{ runner.os }}-node-modules-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ github.event.pull_request.head.sha }}
 
       - name: Install dependencies (if cache miss)
+        if: steps.cache-restore.outputs.cache-hit != 'true'
         run: |
           if [ -f "pnpm-lock.yaml" ]; then
             echo "Using pnpm"
@@ -50,9 +55,13 @@ jobs:
             yarn install
           fi
 
+      - name: Build (if cache miss)
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        run: yarn run build
+
       - name: Deploy to Vercel
         run: |
-          vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
           echo "Deployment completed successfully!"
 
       - name: Calculate deployment time
@@ -60,22 +69,26 @@ jobs:
           DEPLOY_END_TIME=$(date +%s)
           DEPLOY_DURATION=$((DEPLOY_END_TIME - DEPLOY_START_TIME))
           echo "Deployment completed in ${DEPLOY_DURATION} seconds"
+          echo "DEPLOY_DURATION=${DEPLOY_DURATION}" >> $GITHUB_ENV
 
-      - name: Display timing summary
-        run: |
-          echo "=== PIPELINE TIMING SUMMARY ==="
-          echo "Build Duration: ${{ needs.build.outputs.build-duration }} seconds"
-          echo "Test Duration: ${{ needs.test.outputs.test-duration }} seconds"
-          echo "Deploy Duration: ${DEPLOY_DURATION} seconds"
-          TOTAL_TIME=$((${{ needs.build.outputs.build-duration }} + ${{ needs.test.outputs.test-duration }} + DEPLOY_DURATION))
-          echo "Total Pipeline Time: ${TOTAL_TIME} seconds"
-          echo "==============================="
+      - name: Comment deployment success
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployDuration = process.env.DEPLOY_DURATION;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Deployment Successful!**\n\n✅ Deployed in ${deployDuration} seconds\n🔗 Your changes are now live!`
+            });
 
   # Optional: Notification job that runs after deployment
   notify:
     runs-on: ubuntu-latest
-    needs: [build, test, deploy]
-    if: always() # Run even if previous jobs fail
+    needs: [deploy]
+    if: always() # Run even if deployment fails
 
     steps:
       - name: Send notification
@@ -87,3 +100,16 @@ jobs:
             echo "❌ Deployment failed or skipped"
             # Add failure notification logic here
           fi
+
+      - name: Comment on failure
+        if: needs.deploy.result == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **Deployment Failed!**\n\nPlease check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.`
+            });

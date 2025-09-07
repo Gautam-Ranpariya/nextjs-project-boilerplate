@@ -1,10 +1,16 @@
-name: Auto Assign Reviewer and Deploy
+name: Auto Assign Reviewer
 
 on:
-  pull_request:
-    types: [opened, ready_for_review, reopened, synchronize]
-  pull_request_review:
-    types: [submitted]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request Number'
+        required: true
+        type: string
+      pr_author:
+        description: 'Pull Request Author'
+        required: true
+        type: string
 
 permissions:
   pull-requests: write
@@ -15,47 +21,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Assign reviewer (you)
-        uses: kentaro-m/auto-assign-action@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          addAssignees: true
-          addReviewers: true
-          assignees: |
-            Gautam-Ranpariya
-          reviewers: |
-            Gautam-Ranpariya
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Auto-approve if PR author is repo owner
-        if: ${{ github.event.pull_request.user.login == 'Gautam-Ranpariya' }}
-        uses: hmarr/auto-approve-action@v3
-        with:
-          github-token: ${{ secrets.PAT_TOKEN }}
-
-      - name: Comment for admin review if PR author is not owner
-        if: ${{ github.event.pull_request.user.login != 'Gautam-Ranpariya' }}
+      - name: Get PR details
+        id: pr-details
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const pr = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "👋 Auto-assigned and requested review from @Gautam-Ranpariya"
-            })
+              pull_number: parseInt('${{ github.event.inputs.pr_number }}')
+            });
 
-  trigger-deploy:
-    runs-on: ubuntu-latest
-    needs: assign-reviewer
-    if: ${{ github.event_name == 'pull_request_review' && github.event.review.state == 'approved' }}
+            core.setOutput('pr_state', pr.data.state);
+            core.setOutput('pr_draft', pr.data.draft);
+            core.setOutput('pr_author', pr.data.user.login);
 
-    steps:
-      - name: Trigger Deploy Workflow
-        uses: peter-evans/workflow-dispatch@v1
+      - name: Assign reviewer (you)
+        if: steps.pr-details.outputs.pr_state == 'open' && steps.pr-details.outputs.pr_draft == 'false'
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: 'deploy.yml'
-          ref: ${{ github.event.pull_request.head.ref }}
-          inputs:
-            deploy: true
+          script: |
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: parseInt('${{ github.event.inputs.pr_number }}'),
+              reviewers: ['Gautam-Ranpariya']
+            });
+
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ github.event.inputs.pr_number }}'),
+              assignees: ['Gautam-Ranpariya']
+            });
+
+      - name: Auto-approve if PR author is repo owner
+        if: github.event.inputs.pr_author == 'Gautam-Ranpariya'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: parseInt('${{ github.event.inputs.pr_number }}'),
+              event: 'APPROVE',
+              body: '✅ Auto-approved by repo owner'
+            });
+
+      - name: Comment for admin review if PR author is not owner
+        if: github.event.inputs.pr_author != 'Gautam-Ranpariya'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: parseInt('${{ github.event.inputs.pr_number }}'),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "👋 Auto-assigned and requested review from @Gautam-Ranpariya after successful CI/CD checks"
+            });
