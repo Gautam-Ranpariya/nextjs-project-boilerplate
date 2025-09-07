@@ -28,7 +28,7 @@ jobs:
           script: |
             const prNumber = parseInt('${{ github.event.inputs.pr_number }}');
             const prAuthor = '${{ github.event.inputs.pr_author }}';
-            
+
             // Get PR details
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner,
@@ -63,7 +63,7 @@ jobs:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = parseInt('${{ github.event.inputs.pr_number }}');
-            
+
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -81,7 +81,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = parseInt('${{ github.event.inputs.pr_number }}');
-            
+
             await github.rest.issues.createComment({
               issue_number: prNumber,
               owner: context.repo.owner,
