@@ -144,6 +144,7 @@ Add the following **repository secrets** in GitHub:
 ```
 
 > 💡 Pipeline automatically:
+>
 > 1. Install Dependencies
 > 2. Runs Prettier & ESLint
 > 3. Builds Next.js app
