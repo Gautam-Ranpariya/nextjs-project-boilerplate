@@ -133,7 +133,7 @@ jobs:
       - name: Deploy to Vercel
         run: |
           set -e
-          npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
           echo "Deployment completed successfully!"
 
       - name: Calculate deployment time
