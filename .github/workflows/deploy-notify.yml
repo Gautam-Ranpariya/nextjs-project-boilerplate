@@ -3,6 +3,7 @@ name: Deploy
 on:
   pull_request_review:
     types: [submitted]
+    branches: [main]
 
 env:
   NODE_VERSION: 20
@@ -14,7 +15,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.event.review.state == 'approved'
+    if: github.event.review.state == 'approved' && github.event.review.user.login == 'Ka-ran123'
 
     steps:
       - name: Record deployment start time
@@ -65,6 +66,7 @@ jobs:
 
       - name: Deploy to Vercel
         run: |
+          set -e
           npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
           echo "Deployment completed successfully!"
 

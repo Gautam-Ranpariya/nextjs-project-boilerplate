@@ -84,26 +84,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = ${{ github.event.number }};
-            const prAuthor = '${{ github.event.pull_request.user.login }}';
-
-            let reviewer;
-            if (prAuthor === 'Gautam-Ranpariya') {
-              reviewer = 'Karan_Unagar';
-            } else if (prAuthor === 'Karan_Unagar') {
-              reviewer = 'Gautam-Ranpariya';
-            } else {
-              reviewer = 'Gautam-Ranpariya';
-            }
 
             try {
               await github.rest.pulls.requestReviewers({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: prNumber,
-                reviewers: [reviewer]
+                reviewers: ['Ka-ran123']
               });
 
-              console.log(`✅ Fallback assigned reviewer: ${reviewer}`);
+              console.log('✅ Fallback assigned reviewer: Ka-ran123');
             } catch (error) {
               console.error('Error in fallback assignment:', error);
             }
