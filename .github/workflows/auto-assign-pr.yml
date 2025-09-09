@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get PR details and assign reviewer dynamically
+      - name: Assign reviewer dynamically
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,38 +32,25 @@ jobs:
 
             console.log(`Processing PR #${prNumber} by ${prAuthor}`);
 
+            let reviewer;
+            if (prAuthor === 'Gautam-Ranpariya') {
+              reviewer = 'Karan_Unagar';
+            } else if (prAuthor === 'Karan_Unagar') {
+              reviewer = 'Gautam-Ranpariya';
+            } else {
+              reviewer = 'Gautam-Ranpariya';
+            }
+
             try {
-              // Get PR details
-              const pr = await github.rest.pulls.get({
+              await github.rest.pulls.requestReviewers({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: prNumber
+                pull_number: prNumber,
+                reviewers: [reviewer]
               });
 
-              console.log(`PR State: ${pr.data.state}, Draft: ${pr.data.draft}`);
-
-              if (pr.data.state === 'open' && !pr.data.draft) {
-                // Reviewer logic
-                let reviewer;
-                if (prAuthor === 'Gautam-Ranpariya') {
-                  reviewer = 'Karan_Unagar';
-                } else {
-                  reviewer = 'Gautam-Ranpariya';
-                }
-
-                // Assign reviewer
-                await github.rest.pulls.requestReviewers({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: prNumber,
-                  reviewers: [reviewer]
-                });
-
-                console.log(`✅ Assigned reviewer: ${reviewer}`);
-              } else {
-                console.log('⚠️ Skipping assignment - PR is closed or draft');
-              }
+              console.log(`✅ Assigned reviewer: ${reviewer}`);
             } catch (error) {
-              console.error('Error in assignment:', error);
+              console.error('Error assigning reviewer:', error);
               throw error;
             }

@@ -14,9 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Record build start time
-        run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -38,32 +35,11 @@ jobs:
       - name: Build Next.js
         run: yarn run build
 
-      - name: Calculate build time
-        run: |
-          BUILD_END_TIME=$(date +%s)
-          BUILD_DURATION=$((BUILD_END_TIME - BUILD_START_TIME))
-          echo "Build completed in ${BUILD_DURATION} seconds"
-          echo "BUILD_DURATION=${BUILD_DURATION}" >> $GITHUB_ENV
-
-      - name: Cache build artifacts
-        uses: actions/cache@v3
-        with:
-          path: |
-            .next
-            node_modules
-          key: ${{ runner.os }}-build-${{ github.sha }}
-
-    outputs:
-      build-duration: ${{ env.BUILD_DURATION }}
-
   test:
     runs-on: ubuntu-latest
     needs: [build]
 
     steps:
-      - name: Record test start time
-        run: echo "TEST_START_TIME=$(date +%s)" >> $GITHUB_ENV
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -79,25 +55,12 @@ jobs:
       - name: Run tests
         run: yarn run test:ci
 
-      - name: Calculate test time
-        run: |
-          TEST_END_TIME=$(date +%s)
-          TEST_DURATION=$((TEST_END_TIME - TEST_START_TIME))
-          echo "Tests completed in ${TEST_DURATION} seconds"
-          echo "TEST_DURATION=${TEST_DURATION}" >> $GITHUB_ENV
-
-    outputs:
-      test-duration: ${{ env.TEST_DURATION }}
-
   trigger-autoassign:
     runs-on: ubuntu-latest
     needs: [build, test]
     if: github.event_name == 'pull_request'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Trigger auto-assign workflow
         run: |
           curl -X POST \
@@ -123,41 +86,24 @@ jobs:
             const prNumber = ${{ github.event.number }};
             const prAuthor = '${{ github.event.pull_request.user.login }}';
 
-            // Assign reviewer and assignee directly
+            let reviewer;
+            if (prAuthor === 'Gautam-Ranpariya') {
+              reviewer = 'Karan_Unagar';
+            } else if (prAuthor === 'Karan_Unagar') {
+              reviewer = 'Gautam-Ranpariya';
+            } else {
+              reviewer = 'Gautam-Ranpariya';
+            }
+
             try {
               await github.rest.pulls.requestReviewers({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: prNumber,
-                reviewers: ['Gautam-Ranpariya']
+                reviewers: [reviewer]
               });
 
-              await github.rest.issues.addAssignees({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                assignees: ['Gautam-Ranpariya']
-              });
-
-              // Auto-approve if PR author is repo owner
-              if (prAuthor === 'Gautam-Ranpariya') {
-                await github.rest.pulls.createReview({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: prNumber,
-                  event: 'APPROVE',
-                  body: '✅ Auto-approved by repo owner'
-                });
-              } else {
-                await github.rest.issues.createComment({
-                  issue_number: prNumber,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: "👋 Auto-assigned and requested review from @Gautam-Ranpariya after successful CI/CD checks"
-                });
-              }
-
-              console.log('✅ Successfully processed PR assignment');
+              console.log(`✅ Fallback assigned reviewer: ${reviewer}`);
             } catch (error) {
               console.error('Error in fallback assignment:', error);
             }
