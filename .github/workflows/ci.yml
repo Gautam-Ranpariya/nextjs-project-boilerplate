@@ -1,0 +1,171 @@
+name: CI/CD + Auto Assign + Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches: [main]
+  pull_request_review:
+    types: [submitted]
+    branches: [main]
+
+env:
+  NODE_VERSION: 20
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  # ---------------- CI/CD ----------------
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Prettier check
+        run: yarn run format:ci
+
+      - name: ESLint check
+        run: yarn run lint
+
+      - name: Build Next.js
+        run: yarn run build
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run tests
+        run: yarn run test:ci
+
+  # ---------------- Auto-Assign Reviewer ----------------
+  auto-assign:
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Assign Ka-ran123 as reviewer
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const prAuthor = context.payload.pull_request.user.login;
+
+            if (prAuthor === 'Ka-ran123') {
+              console.log("Skipping reviewer assignment (self-review not allowed).");
+            } else {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                reviewers: ['Ka-ran123']
+              });
+
+              console.log(`✅ Assigned reviewer: Ka-ran123`);
+            }
+
+  # ---------------- Deploy ----------------
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && github.event.review.user.login == 'Ka-ran123'
+
+    steps:
+      - name: Record deployment start time
+        run: echo "DEPLOY_START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Restore build artifacts
+        id: cache-restore
+        uses: actions/cache@v3
+        with:
+          path: |
+            .next
+            node_modules
+          key: ${{ runner.os }}-build-${{ github.event.pull_request.head.sha }}
+
+      - name: Install dependencies (if cache miss)
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
+
+      - name: Build (if cache miss)
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        run: yarn run build
+
+      - name: Deploy to Vercel
+        run: |
+          set -e
+          npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          echo "Deployment completed successfully!"
+
+      - name: Calculate deployment time
+        run: |
+          DEPLOY_END_TIME=$(date +%s)
+          DEPLOY_DURATION=$((DEPLOY_END_TIME - DEPLOY_START_TIME))
+          echo "Deployment completed in ${DEPLOY_DURATION} seconds"
+          echo "DEPLOY_DURATION=${DEPLOY_DURATION}" >> $GITHUB_ENV
+
+      - name: Comment deployment success
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployDuration = process.env.DEPLOY_DURATION;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Deployment Successful!**\n\n✅ Deployed in ${deployDuration} seconds\n🔗 Your changes are now live!`
+            })
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+
+    steps:
+      - name: Notify status
+        run: |
+          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed or skipped"
+          fi
