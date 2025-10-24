@@ -18,10 +18,15 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'bobbyhadz.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.dummyjson.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   reactStrictMode: false, // Optional: Strict mode for React
-  // Other Next.js configurations
 }
 
 const withNextIntl = createNextIntlPlugin()

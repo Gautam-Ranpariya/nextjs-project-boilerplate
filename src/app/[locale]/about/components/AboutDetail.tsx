@@ -1,9 +1,14 @@
 'use client'
 
+// Utils Imports
+import { picsumAPIURL } from 'common/utils/env-config'
+
 // Next.js Imports
 import Image from 'next/image'
 
 const AboutDetail = () => {
+  // Variables
+  const currentDate = Date.now()
   return (
     <>
       <div
@@ -12,7 +17,7 @@ const AboutDetail = () => {
       >
         <div className="w-1/2 rounded-lg bg-white p-8" data-testid="about-modal">
           <Image
-            src={`https://picsum.photos/400/400?random=${Date.now()}`}
+            src={`${picsumAPIURL}/400/400?random=${currentDate}`}
             alt="dynamic image"
             className="mb-4 h-40 w-40 rounded-full"
             width={400}

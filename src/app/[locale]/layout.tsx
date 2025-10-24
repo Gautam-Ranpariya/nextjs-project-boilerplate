@@ -12,6 +12,7 @@ import '../globals.css'
 
 // Localization Import
 import { getMessages } from 'next-intl/server'
+import { RootLayoutProps } from 'types/global'
 
 // Metadata config
 export const metadata: Metadata = {

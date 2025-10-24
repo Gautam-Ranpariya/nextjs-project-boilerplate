@@ -12,6 +12,13 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
 
+  // disable explicit any rule project-wide
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+
   // ✅ Example override for mocks
   {
     files: ['src/common/__mocks__/**'],

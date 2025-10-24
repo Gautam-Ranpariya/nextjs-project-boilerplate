@@ -25,7 +25,8 @@
       "@/common/*": ["./src/common/*"],
       "@/app/*": ["./src/app/*"],
       "@/i18n/*": ["./src/i18n/*"],
-      "@/locale/*": ["./src/common/locale/*"]
+      "@/locale/*": ["./src/common/locale/*"],
+      "@/redux/*": ["./src/common/lib/redux/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.mjs"],

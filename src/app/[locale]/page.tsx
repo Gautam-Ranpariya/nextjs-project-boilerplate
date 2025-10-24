@@ -1,8 +1,7 @@
 // Component Imports
-import HomeDetail from './home/components/HomeDetail'
+import ArticleDetail from './article/components/ArticleDetail'
 
 const Home = () => {
-  return <HomeDetail />
+  return <ArticleDetail />
 }
-
 export default Home
