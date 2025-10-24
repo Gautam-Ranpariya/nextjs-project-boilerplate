@@ -14,6 +14,7 @@
     "test:ci": "jest --ci --runInBand"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.9.0",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "axios": "^1.12.1",
     "i18next": "^25.3.6",
@@ -24,7 +25,8 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-loading-skeleton": "^3.5.0"
+    "react-loading-skeleton": "^3.5.0",
+    "react-redux": "^9.2.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

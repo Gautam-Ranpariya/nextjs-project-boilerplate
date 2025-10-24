@@ -1,3 +1,5 @@
+import { AxiosResponse } from 'axios'
+
 type RootLayoutProps = {
   children: React.ReactNode
   params: Promise<Params>
@@ -34,4 +36,26 @@ type NextImageProps = {
   alt: string
   width?: number
   height?: number
+}
+
+type AxiosValidationError = {
+  [key: string]: string
+}
+
+interface IRequestHandlerConfig<T> {
+  apiCall: () => Promise<AxiosResponse<T>>
+  handlers?: {
+    onBefore?: () => void
+    onSuccess: (data: T) => void | Promise<void>
+    onError: (errors: AxiosValidationError) => void | Promise<void>
+    onFail: (message: string) => void | Promise<void>
+    onAfter?: () => void
+  }
+}
+
+interface ApiResponse<T> {
+  statusCode: number
+  data: T
+  message: string
+  success: boolean
 }

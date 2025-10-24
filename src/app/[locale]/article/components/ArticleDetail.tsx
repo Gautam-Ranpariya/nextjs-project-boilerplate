@@ -1,43 +1,38 @@
 'use client'
 
-import axios from 'axios'
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
+// Redux Imports
+import { getArticleThunk } from 'common/lib/redux/slices/article/thunk'
+import { AppDispatch, RootState } from 'common/lib/redux/store'
+
+// React Imports
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+
+// Third Party Imports
 import Skeleton from 'react-loading-skeleton'
+
+// Style Imports
 import 'react-loading-skeleton/dist/skeleton.css'
 
-const HomeDetail = () => {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [image, setImage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [imageLoaded, setImageLoaded] = useState(false)
-
-  const fetchData = async () => {
-    setIsLoading(true)
-    setImageLoaded(false)
-
-    try {
-      const res = await axios.get('https://jsonplaceholder.typicode.com/posts')
-      const data = res.data
-
-      const randomPost = data[Math.floor(Math.random() * data.length)]
-      setTitle(randomPost.title)
-      setDescription(randomPost.body)
-
-      setImage(`https://picsum.photos/400/300?random=${Date.now()}`)
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+const ArticleDetail = () => {
+  // Hooks
+  const dispatch = useDispatch<AppDispatch>()
+  const { article } = useSelector((state: RootState) => state.article)
+  const { isLoading } = useSelector((state: RootState) => state.common)
 
   useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 20000)
+    dispatch(getArticleThunk())
+
+    const interval = setInterval(() => {
+      dispatch(getArticleThunk())
+    }, 25000)
     return () => clearInterval(interval)
-  }, [])
+  }, [dispatch])
+
+  // handle reload button click
+  const handleReloadButtonClick = () => {
+    dispatch(getArticleThunk())
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
@@ -49,18 +44,22 @@ const HomeDetail = () => {
 
         {/* Dynamic Image with skeleton */}
         <div className="relative h-60 w-full">
-          {!imageLoaded && <Skeleton height={240} />}
-          {image && (
-            <Image
-              src={image}
-              alt="Random"
-              width={400}
-              height={300}
-              className={`h-60 w-full object-cover transition-opacity duration-500 ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-              onLoadingComplete={() => setImageLoaded(true)}
-            />
+          {isLoading ? (
+            <Skeleton height={300} />
+          ) : (
+            <>
+              {article && article?.thumbnail ? (
+                <img
+                  src={article?.thumbnail || ''}
+                  alt="Random"
+                  width={400}
+                  height={300}
+                  className={`h-60 w-full object-cover transition-opacity duration-500`}
+                />
+              ) : (
+                <div className="h-60 w-full animate-pulse bg-gray-200" /> // fallback skeleton
+              )}
+            </>
           )}
         </div>
 
@@ -73,14 +72,16 @@ const HomeDetail = () => {
             </>
           ) : (
             <>
-              <h3 className="mt-2 text-lg font-semibold text-gray-800 capitalize">{title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-gray-600">{description}</p>
+              <h3 className="mt-2 text-lg font-semibold text-gray-800 capitalize">
+                {article?.title}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-gray-600">{article?.description}</p>
             </>
           )}
 
           {/* Refresh Button */}
           <button
-            onClick={fetchData}
+            onClick={handleReloadButtonClick}
             className="mt-4 flex w-full items-center justify-center rounded-lg bg-blue-500 px-4 py-2 text-center font-semibold text-white hover:bg-blue-600"
             disabled={isLoading}
           >
@@ -108,4 +109,4 @@ const HomeDetail = () => {
   )
 }
 
-export default HomeDetail
+export default ArticleDetail
