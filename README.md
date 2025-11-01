@@ -151,6 +151,91 @@ Add the following **repository secrets** in GitHub:
 > 4. Runs Jest tests
 > 5. Deploys to Vercel securely
 
+---
+
+## CI/CD — GitHub Actions & Vercel (for developers)
+
+This repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) and a `CODEOWNERS` entry to streamline review and deployment to Vercel. Add the following notes for other developers working on this project.
+
+### Workflow overview
+
+- Workflow file: `.github/workflows/ci.yml`
+- Node version: 20 (configured in the workflow's `env`)
+- Main jobs:
+  - `build`: checks out code, installs dependencies, runs Prettier format check, ESLint, and builds the Next.js app
+  - `test`: runs after build and executes the Jest test suite
+  - `auto-assign`: (runs on PRs) requests review from the designated reviewer unless the PR author is the reviewer
+  - `deploy`: triggers when a PR review by the configured reviewer is submitted and approved — performs a Vercel deployment
+
+### Triggers and conditions
+
+- The workflow runs on pushes and pull request events targeting `main`.
+- The `deploy` job only runs when a pull request review is submitted and the reviewer is `Ka-ran123` and the review state is `approved`. That makes deployments gated by that specific reviewer.
+
+### CODEOWNERS and auto-assignment
+
+- `CODEOWNERS` sets `@Ka-ran123` as the owner for the repository. This is used by GitHub to suggest reviewers automatically and—combined with the workflow—ensures `Ka-ran123` receives review requests.
+- The `auto-assign` step in the workflow also explicitly requests `Ka-ran123` as a reviewer using the GitHub API, but it skips assignment if the PR author is `Ka-ran123` (prevents self-review).
+
+### Required repository secrets
+
+Make sure the following repository secrets are configured (Repository Settings → Secrets & variables → Actions):
+
+- `VERCEL_TOKEN` — A personal token from Vercel (used by CLI deploy)
+- `VERCEL_ORG_ID` — Optional but recommended for explicit project targeting
+- `VERCEL_PROJECT_ID` — Optional but recommended for explicit project targeting
+
+Note: The `deploy` step in `ci.yml` uses `npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}`. If you prefer to provide the org/project flags, the README contains the alternate command shown above.
+
+### How to reproduce CI checks locally
+
+To mirror what runs in CI use the npm scripts included in this repo. In PowerShell (Windows) or your shell of choice:
+
+```powershell
+# Install dependencies (use your package manager if not npm)
+npm install
+
+# Format check (same as CI's format:ci)
+npm run format:ci
+
+# Lint
+npm run lint
+
+# Build (same as CI build)
+npm run build
+
+# Run tests
+npm run test
+```
+
+If you use Yarn in your environment, replace commands accordingly (e.g., `yarn install`, `yarn format:ci`).
+
+### Local deploy (optional)
+
+You can test a Vercel deployment locally with the Vercel CLI. Be sure to have `VERCEL_TOKEN` available in your environment (or use `vercel login`):
+
+```powershell
+# Deploy to Vercel (interactive or non-interactive with token)
+npx vercel --prod --token $env:VERCEL_TOKEN
+```
+
+### Troubleshooting & notes for contributors
+
+- If your PR isn't triggering the `auto-assign` step, check that the workflow has run successfully and that the event was a PR event (opened, reopened, synchronize, etc.).
+- If the `deploy` job is skipped, confirm that the review event was an approval by `Ka-ran123` — the workflow condition checks both the review `state` and `user.login`.
+- Build cache: the deploy job attempts to restore `.next` and `node_modules` using `actions/cache`. A cache-miss will re-run install and build steps. If you see unexpected behavior, clear caches in the Actions UI or bump the cache key logic.
+- If you want to change the reviewer or add additional owners, update `.github/CODEOWNERS` and the `reviewers` list in `.github/workflows/ci.yml`.
+- For CI failures related to dependencies, ensure your local `node` version matches the workflow (Node 20). Use `nvm` / Node version manager to match versions.
+
+### Security considerations
+
+- Keep `VERCEL_TOKEN` secret and scoped appropriately. Prefer tokens with the minimum required permissions.
+- The current deploy gate requires an approval from `Ka-ran123`. If you want a more permissive flow, change the `deploy` job conditions in `.github/workflows/ci.yml`.
+
+---
+
+If you'd like, I can also add a short CONTRIBUTING.md describing the PR -> CI -> deploy flow and a template PR checklist. Would you like that added?
+
 ## 🛠️ Available Commands
 
 ```bash
