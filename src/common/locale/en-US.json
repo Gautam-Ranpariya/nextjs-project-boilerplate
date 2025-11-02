@@ -1,4 +1,6 @@
 {
-  "welcome": "Welcome",
-  "description": "This is an English description."
+  "cmn_lbl_loading": "Loading",
+  "cmn_lbl_tree_dots": "...",
+  "cmn_btn_lbl_refresh": "Refresh",
+  "cmn_title_welcome": "Welcome To My Boilerplate"
 }

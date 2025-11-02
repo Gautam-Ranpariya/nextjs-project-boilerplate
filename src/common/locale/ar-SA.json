@@ -1,4 +1,6 @@
 {
-  "welcome": "مرحبا",
-  "description": "هذا وصف باللغة العربية."
+  "cmn_lbl_loading": "جارٍ التحميل",
+  "cmn_lbl_tree_dots": "...",
+  "cmn_btn_lbl_refresh": "تحديث",
+  "cmn_title_welcome": "مرحبًا بك في قالب العمل الخاص بي"
 }
