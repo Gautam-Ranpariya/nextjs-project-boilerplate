@@ -11,7 +11,7 @@ import type { Metadata } from 'next'
 import '../globals.css'
 
 // Localization Import
-import { getMessages } from 'next-intl/server'
+import { getMessages, getTimeZone } from 'next-intl/server'
 import { RootLayoutProps } from 'types/global'
 
 // Metadata config
@@ -79,11 +79,12 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
 
   // Get the translations for the current locale
   const messages = await getMessages({ locale })
+  const timeZone = await getTimeZone({ locale })
 
   return (
     <html lang={locale} dir={direction}>
       <body>
-        <LocaleProvider locale={locale} messages={messages}>
+        <LocaleProvider locale={locale} messages={messages} timeZone={timeZone}>
           {children}
         </LocaleProvider>
       </body>

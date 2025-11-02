@@ -29,6 +29,7 @@ type LocalProviderProps = {
   children: React.ReactNode
   locale: Locale
   messages: Record<string, string>
+  timeZone: string | undefined
 }
 
 type NextImageProps = {
